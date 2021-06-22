@@ -8,3 +8,8 @@
 * del_file "file_path"
 * del_dir "dir_path"
 * cd "path"
+
+## Using Package
+* [System.Configuration.ConfigurationManager](https://github.com/dotnet/runtime)
+* [Terminal.Gui](https://github.com/migueldeicaza/gui.cs/)
+
