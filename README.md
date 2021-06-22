@@ -1,6 +1,6 @@
 # Console File Manager
 
-![Sample app](https://raw.githubusercontent.com/yurec0098/Lesson_9/master/ConsoleFileManager/Sample.png?token=ATWXAR5CGF4TDB7CXUC4OYTA2I4IU)
+![Sample app](https://raw.github.com/yurec0098/Lesson_9/master/ConsoleFileManager/Sample.png)
 
 ## Commands
 * copy_file "orig_file_path" "new_file_path"
