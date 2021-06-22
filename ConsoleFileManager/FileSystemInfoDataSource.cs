@@ -32,7 +32,7 @@ namespace ConsoleFileManager
 			switch (Source[item])
 			{
 				case FileInfo file:
-					if(selected)
+					if (selected)
 						driver.SetAttribute(new Attribute(Color.Green, Color.Gray));
 					else
 						driver.SetAttribute(new Attribute(Color.BrightGreen, Color.Blue));

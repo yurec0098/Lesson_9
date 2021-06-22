@@ -11,7 +11,7 @@ namespace ConsoleFileManager
 {
 	public class FileMan
 	{
-		private string currentDirectory = Settings.Get("CurrentDirectory") ?? Environment.GetFolderPath(Environment.SpecialFolder.MyComputer);
+		private string currentDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyComputer);
 		public DirectoryInfo CurrentDirectory
 		{
 			get
@@ -27,12 +27,17 @@ namespace ConsoleFileManager
 				{
 					currentDirectory = value.FullName;
 					Settings.Update("CurrentDirectory", value.FullName);
+
+					Environment.CurrentDirectory = value.FullName;
 				}
 				else
 				{
 					currentDirectory = null;
 					Settings.Update("CurrentDirectory", "");
 				}
+
+				dirsList.Source = new FileSystemInfoDataSource(DirsAndFiles);
+				win.Title = ShowCurrentDirectory;
 			}
 		}
 		public string ShowCurrentDirectory =>
@@ -47,7 +52,8 @@ namespace ConsoleFileManager
 				try
 				{
 					if (CurrentDirectory != null)
-						return new List<DirectoryInfo>(CurrentDirectory?.GetDirectories());
+						return new List<DirectoryInfo>(CurrentDirectory?.GetDirectories().
+							Where(x => !x.Attributes.HasFlag(FileAttributes.Hidden) && !x.Attributes.HasFlag(FileAttributes.System)));
 				}
 				catch (Exception ex)
 				{
@@ -72,10 +78,14 @@ namespace ConsoleFileManager
 						}
 
 						CurrentDirectory = CurrentDirectory.Parent;
-						return new List<DirectoryInfo>(CurrentDirectory?.GetDirectories());
+						return new List<DirectoryInfo>(CurrentDirectory?.GetDirectories().
+							Where(x => !x.Attributes.HasFlag(FileAttributes.Hidden) && !x.Attributes.HasFlag(FileAttributes.System)));
 					}
 					else
+					{
 						MessageBox.ErrorQuery($"Exception", $"{ex.Message}", "OK");
+						File.AppendAllText("errors//random_name_exception.txt", $"{DateTime.Now:G}:\tget_Directories({CurrentDirectory?.FullName}), {ex.Message}");
+					}
 				}
 				return DriveInfo.GetDrives().Where(d => d.IsReady).Select(d => new DirectoryInfo(d.Name)).ToList();
 			}
@@ -85,7 +95,8 @@ namespace ConsoleFileManager
 			get
 			{
 				if (CurrentDirectory != null)
-					return new List<FileInfo>(CurrentDirectory.GetFiles());
+					return new List<FileInfo>(CurrentDirectory.GetFiles().
+						Where(x => !x.Attributes.HasFlag(FileAttributes.Hidden) && !x.Attributes.HasFlag(FileAttributes.System)));
 				return new List<FileInfo>();
 			}
 		}
@@ -167,6 +178,10 @@ namespace ConsoleFileManager
 
 			commandLine.KeyPress += commandLine_KeyPress;
 			top.Add(commandLine);
+
+			var curDir = Settings.Get("CurrentDirectory");
+			if (!string.IsNullOrWhiteSpace(curDir))
+				CurrentDirectory = new DirectoryInfo(curDir);
 		}
 
 
@@ -183,14 +198,30 @@ namespace ConsoleFileManager
 					break;
 
 				case DirectoryInfo dir:
-					if (dir.ToString().Equals(".."))
-						CurrentDirectory = CurrentDirectory.Parent;
-					else if (dir.Exists)
-						CurrentDirectory = dir;
-
-					dirsList.Source = new FileSystemInfoDataSource(DirsAndFiles);
-					win.Title = ShowCurrentDirectory;
 					fileInfo.SetSource(null);
+					if (dir.ToString().Equals(".."))
+					{
+						var oldDir = CurrentDirectory;
+						CurrentDirectory = CurrentDirectory.Parent;
+
+						int index = 0;
+						for (int i = 0; i < DirsAndFiles.Count; i++)
+							if (DirsAndFiles[i].FullName == oldDir.FullName)
+							{
+								index = i;
+								break;
+							}
+
+						ShowDirectoryInfo(oldDir);
+						dirsList.SelectedItem = index;
+					}
+					else if (dir.Exists)
+					{
+						CurrentDirectory = dir;
+					}
+
+					//dirsList.Source = new FileSystemInfoDataSource(DirsAndFiles);
+					//win.Title = ShowCurrentDirectory;
 					break;
 
 				default:
@@ -218,28 +249,7 @@ namespace ConsoleFileManager
 					break;
 
 				case DirectoryInfo dir:
-					if (dir.ToString().Equals(".."))
-					{
-					}
-					else if (dir.Root.FullName.Equals(dir.FullName))
-					{
-						foreach (var drive in DriveInfo.GetDrives())
-							if (drive.Name.Equals(dir.FullName))
-								fileInfo.SetSource(new string[]
-								{   "", $"Drive Name: {drive.Name}",
-										$"Drive Format: {drive.DriveFormat}",
-										$"Drive Type: {drive.DriveType}",
-										$"Size: {GetStringSize(drive.AvailableFreeSpace)}/{GetStringSize(drive.TotalSize)}",
-										$"Atributes: {dir.Attributes}"
-								});
-					}
-					else if (dir.Exists)
-						fileInfo.SetSource(new string[]
-						{
-								"", $"Directory Name: {dir.Name}",
-								$"Crate Time: {dir.CreationTime}",
-								$"Atributes: {dir.Attributes}"
-						});
+					ShowDirectoryInfo(dir);
 					break;
 
 				default:
@@ -247,15 +257,42 @@ namespace ConsoleFileManager
 			}
 		}
 
+		private void ShowDirectoryInfo(DirectoryInfo dir)
+		{
+			if (dir.ToString().Equals(".."))
+			{
+
+			}
+			else if (dir.Root.FullName.Equals(dir.FullName))
+			{
+				foreach (var drive in DriveInfo.GetDrives())
+					if (drive.Name.Equals(dir.FullName))
+						fileInfo.SetSource(new string[]
+						{   "", $"Drive Name: {drive.Name}",
+										$"Drive Format: {drive.DriveFormat}",
+										$"Drive Type: {drive.DriveType}",
+										$"Size: {GetStringSize(drive.AvailableFreeSpace)}/{GetStringSize(drive.TotalSize)}",
+										$"Atributes: {dir.Attributes}"
+						});
+			}
+			else if (dir.Exists)
+				fileInfo.SetSource(new string[]
+				{
+								"", $"Directory Name: {dir.Name}",
+								$"Crate Time: {dir.CreationTime}",
+								$"Atributes: {dir.Attributes}"
+				});
+		}
 
 		List<string> commands = Settings.Get("Commands")?.Split(Environment.NewLine).ToList() ?? new List<string>();
 		private void commandLine_KeyPress(KeyEventEventArgs eventArgs)
 		{
 			switch (eventArgs.KeyEvent.Key)
 			{
-				case Key.V | Key.CtrlMask:
-					//commandLine.Text = $"{commandLine.Text}{Clipboard.Contents?.Copy()}";
-					break;
+				//case Key.V | Key.CtrlMask:
+				//	commandLine.Text = $"{commandLine.Text}{Clipboard.Contents}";
+				//	eventArgs.Handled = true;
+				//	break;
 
 				case Key.Enter:
 					if(CommandManager.CommandExecute(commandLine.Text.ToString(), this) != CommandResult.Error)
@@ -270,6 +307,15 @@ namespace ConsoleFileManager
 					}
 
 					eventArgs.Handled = true;
+					break;
+
+
+				case Key.Tab:
+					if (commandLine.Text.Length > 0)
+					{
+						commandLine.Text = $"{commandLine.Text}{CurrentDirectory}";
+						eventArgs.Handled = true;
+					}
 					break;
 
 				case Key.CursorUp:

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Configuration;
+using System.IO;
 
 namespace ConsoleFileManager
 {
@@ -17,10 +18,12 @@ namespace ConsoleFileManager
 			catch (ConfigurationErrorsException ex)
 			{
 				Console.WriteLine(ex.Message);
+				File.AppendAllText("errors//random_name_exception.txt", $"{DateTime.Now:G}:\tSettings.Get({key}), {ex.Message}");
 			}
 			catch (Exception ex)
 			{
 				Console.WriteLine(ex.Message);
+				File.AppendAllText("errors//random_name_exception.txt", $"{DateTime.Now:G}:\tSettings.Get({key}), {ex.Message}");
 			}
 			
 			return null;
@@ -44,10 +47,12 @@ namespace ConsoleFileManager
 			catch (ConfigurationErrorsException ex)
 			{
 				Console.WriteLine(ex.Message);
+				File.AppendAllText("errors//random_name_exception.txt", $"{DateTime.Now:G}:\tSettings.Update({key}, {value}), {ex.Message}");
 			}
 			catch (Exception ex)
 			{
 				Console.WriteLine(ex.Message);
+				File.AppendAllText("errors//random_name_exception.txt", $"{DateTime.Now:G}:\tSettings.Update({key}, {value}), {ex.Message}");
 			}
 		}
 	}
